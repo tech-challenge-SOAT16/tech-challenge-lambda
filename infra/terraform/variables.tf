@@ -41,7 +41,10 @@ variable "allowed_origins" {
   }
 }
 variable "email_sender" { type = string }
-variable "ses_identity_arn" { type = string }
+variable "ses_identity_arn" {
+  type    = string
+  default = "*"
+}
 variable "jwt_key_id" { type = string }
 variable "jwt_audience" {
   type    = string
@@ -59,4 +62,31 @@ variable "alarm_topic_arn" {
 variable "reserved_concurrency" {
   type    = number
   default = 5
+}
+
+variable "existing_role_arn" {
+  type        = string
+  default     = null
+  description = "Existing execution role for restricted AWS Academy accounts."
+}
+variable "notifier" {
+  type    = string
+  default = "ses"
+  validation {
+    condition     = contains(["ses", "smtp"], var.notifier)
+    error_message = "Use ses or smtp."
+  }
+}
+variable "smtp_host" {
+  type    = string
+  default = "localhost"
+}
+variable "smtp_port" {
+  type    = number
+  default = 1025
+}
+variable "allow_lab_smtp" {
+  type        = bool
+  default     = false
+  description = "Explicit opt-in for private SMTP in the disposable lab; keep false outside the lab."
 }
