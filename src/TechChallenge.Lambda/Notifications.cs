@@ -14,7 +14,7 @@ public sealed class Notifications(Settings settings) : INotifier
     public async Task SendAsync(string destination, string code, CancellationToken cancellation)
     {
         var body = $"Seu código de acesso é {code}. Expira em 5 minutos.";
-        if (settings.IsCloud)
+        if (settings.IsCloud && settings.Notifier == "ses")
         {
             using var ses = new AmazonSimpleEmailServiceV2Client(new AmazonSimpleEmailServiceV2Config
             { Timeout = TimeSpan.FromSeconds(3), MaxErrorRetry = 1 });
@@ -34,7 +34,7 @@ public sealed class Notifications(Settings settings) : INotifier
         }
         else
         {
-            // Local Mailpit only. Production always uses authenticated AWS SES.
+            // Cloud SMTP is allowed only with explicit private-lab opt-in validated by Settings.
             using var smtp = new SmtpClient(settings.SmtpHost, settings.SmtpPort);
             using var message = new MailMessage(settings.EmailSender, destination, "Código de acesso", body);
             await smtp.SendMailAsync(message, cancellation);

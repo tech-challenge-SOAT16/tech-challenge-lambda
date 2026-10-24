@@ -16,6 +16,8 @@ public sealed class Settings
     public string KeyId { get; init; } = "local-1";
     public int TokenLifetimeSeconds { get; init; } = 900;
     public string EmailSender { get; init; } = "auth@local.test";
+    public string Notifier { get; init; } = "ses";
+    public bool AllowLabSmtp { get; init; }
     public string SmtpHost { get; init; } = "localhost";
     public int SmtpPort { get; init; } = 1025;
     public string PreviousPublicJwks { get; init; } = "{\"keys\":[]}";
@@ -29,6 +31,10 @@ public sealed class Settings
             throw new InvalidOperationException("Invalid security settings");
         if (string.IsNullOrWhiteSpace(Audience) || string.IsNullOrWhiteSpace(KeyId))
             throw new InvalidOperationException("Missing JWT settings");
+        if (Notifier is not ("ses" or "smtp"))
+            throw new InvalidOperationException("Invalid notifier");
+        if (IsCloud && Notifier == "smtp" && (!AllowLabSmtp || string.IsNullOrWhiteSpace(SmtpHost) || SmtpHost == "localhost"))
+            throw new InvalidOperationException("Cloud SMTP requires explicit lab opt-in and private SMTP host");
         if (IsCloud)
         {
             var connection = new NpgsqlConnectionStringBuilder(DatabaseConnection);
@@ -70,6 +76,8 @@ public sealed class Settings
             Audience = Env("JWT_AUDIENCE", "tech-challenge-api"),
             KeyId = Env("JWT_KEY_ID", "local-1"),
             EmailSender = Env("EMAIL_SENDER", "auth@local.test"),
+            Notifier = Env("NOTIFIER", "ses"),
+            AllowLabSmtp = bool.Parse(Env("ALLOW_LAB_SMTP", "false")),
             SmtpHost = Env("SMTP_HOST", "localhost"),
             SmtpPort = int.Parse(Env("SMTP_PORT", "1025")),
             TokenLifetimeSeconds = int.Parse(Env("TOKEN_TTL", "900")),

@@ -13,13 +13,15 @@ resource "aws_cloudwatch_log_group" "gateway" {
   retention_in_days = 30
 }
 resource "aws_iam_role" "lambda" {
-  name = local.name
+  count = var.existing_role_arn == null ? 1 : 0
+  name  = local.name
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{
     Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole"
   }] })
 }
 resource "aws_iam_role_policy" "lambda" {
-  role = aws_iam_role.lambda.id
+  count = var.existing_role_arn == null ? 1 : 0
+  role  = aws_iam_role.lambda[0].id
   policy = jsonencode({ Version = "2012-10-17", Statement = concat([
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.lambda.arn}:*" },
     { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = var.secret_arn },
@@ -48,7 +50,7 @@ resource "aws_apigatewayv2_api" "auth" {
 }
 resource "aws_lambda_function" "auth" {
   function_name                  = local.name
-  role                           = aws_iam_role.lambda.arn
+  role                           = var.existing_role_arn != null ? var.existing_role_arn : aws_iam_role.lambda[0].arn
   runtime                        = "dotnet10"
   handler                        = "TechChallenge.Lambda::TechChallenge.Lambda.Function::FunctionHandler"
   architectures                  = ["x86_64"]
@@ -70,7 +72,10 @@ resource "aws_lambda_function" "auth" {
       JWT_AUDIENCE         = var.jwt_audience
       JWT_KEY_ID           = var.jwt_key_id
       PREVIOUS_PUBLIC_JWKS = var.previous_public_jwks
-      NOTIFIER             = "ses"
+      NOTIFIER             = var.notifier
+      SMTP_HOST            = var.smtp_host
+      SMTP_PORT            = tostring(var.smtp_port)
+      ALLOW_LAB_SMTP       = tostring(var.allow_lab_smtp)
       EMAIL_SENDER         = var.email_sender
     }
   }
